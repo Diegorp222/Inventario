@@ -1,0 +1,498 @@
+<CTYPE html>
+    <html lang="es">
+
+    <head>!DO
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gestor de Inventario</title>
+        <style>
+            /* Estilos CSS */
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+            }
+
+            .container {
+                display: flex;
+                min-height: 100vh;
+            }
+
+            .sidebar {
+                width: 250px;
+                background-color: #2c3e50;
+                color: white;
+                padding: 20px 0;
+            }
+
+            .sidebar h2 {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+
+            .sidebar ul {
+                list-style: none;
+                padding: 0;
+            }
+
+            .sidebar li {
+                padding: 10px 20px;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
+
+            .sidebar li:hover {
+                background-color: #34495e;
+            }
+
+            .sidebar li.active {
+                background-color: #3498db;
+            }
+
+            .main-content {
+                flex: 1;
+                padding: 20px;
+            }
+
+            .module {
+                display: none;
+                background-color: white;
+                padding: 20px;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+
+            .module.active {
+                display: block;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+
+            table,
+            th,
+            td {
+                border: 1px solid #ddd;
+            }
+
+            th,
+            td {
+                padding: 12px;
+                text-align: left;
+            }
+
+            th {
+                background-color: #f2f2f2;
+            }
+
+            .form-group {
+                margin-bottom: 15px;
+            }
+
+            label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: bold;
+            }
+
+            input,
+            select {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+
+            button {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
+
+            button:hover {
+                background-color: #2980b9;
+            }
+
+            .debtor-folder {
+                background-color: #f9f9f9;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            .debtor-folder h3 {
+                margin-top: 0;
+                color: #2c3e50;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 10px;
+            }
+
+            .folder-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <!-- Barra lateral -->
+            <div class="sidebar">
+                <h2>Gestor de Inventario</h2>
+                <ul>
+                    <li class="active" data-module="dashboard">Dashboard</li>
+                    <li data-module="sales">Registro de Ventas</li>
+                    <li data-module="debtors">Deudores</li>
+                </ul>
+            </div>
+
+            <!-- Contenido principal -->
+            <div class="main-content">
+                <!-- Módulo Dashboard -->
+                <div class="module active" id="dashboard">
+                    <h2>Dashboard</h2>
+                    <p>Bienvenido al sistema de gestión de inventario. Selecciona un módulo en el menú lateral.</p>
+                </div>
+
+                <!-- Módulo de Ventas -->
+                <div class="module" id="sales">
+                    <h2>Registro de Ventas</h2>
+
+                    <div class="form-group">
+                        <label for="product">Producto:</label>
+                        <input type="text" id="product" placeholder="Nombre del producto">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quantity">Cantidad:</label>
+                        <input type="number" id="quantity" placeholder="Cantidad vendida">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="price">Precio unitario:</label>
+                        <input type="number" id="price" placeholder="Precio por unidad">
+                    </div>
+
+                    <button id="add-sale">Registrar Venta</button>
+                    <button id="clear-sales" style="background-color:#e74c3c; margin-left:10px;">Eliminar
+                        Historial</button>
+
+                    <h3>Historial de Ventas</h3>
+
+                    <div id="monthly-sales-container">
+                        <!-- Aquí se generarán dinámicamente los bloques de cada mes -->
+                    </div>
+                </div>
+
+                <!-- Módulo de Deudores -->
+                <div class="module" id="debtors">
+                    <h2>Deudores</h2>
+
+                    <div class="form-group">
+                        <label for="new-debtor">Nombre del deudor:</label>
+                        <div style="display: flex;">
+                            <input type="text" id="new-debtor" placeholder="Nombre completo">
+                            <button id="add-debtor" style="margin-left: 10px;">Crear Carpeta</button>
+                        </div>
+                    </div>
+
+                    <div id="debtors-list">
+                        <!-- Las carpetas de deudores aparecerán aquí -->
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const menuItems = document.querySelectorAll('.sidebar li');
+                const modules = document.querySelectorAll('.module');
+                const monthlySalesContainer = document.getElementById('monthly-sales-container');
+                const debtorsList = document.getElementById('debtors-list');
+
+                let ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+                let deudores = JSON.parse(localStorage.getItem('deudores')) || [];
+
+                // Inicializar tabla de ventas al cargar
+                renderMonthlySales(); // Mostrar agrupado por mes
+
+                // Inicializar carpetas de deudores
+                deudores.forEach(d => crearCarpetaDeudor(d));
+
+                menuItems.forEach(item => {
+                    item.addEventListener('click', function () {
+                        menuItems.forEach(i => i.classList.remove('active'));
+                        modules.forEach(m => m.classList.remove('active'));
+                        this.classList.add('active');
+                        const moduleId = this.getAttribute('data-module');
+                        document.getElementById(moduleId).classList.add('active');
+                    });
+                });
+
+                document.getElementById('add-sale').addEventListener('click', function () {
+                    const product = document.getElementById('product').value;
+                    const quantity = document.getElementById('quantity').value;
+                    const price = document.getElementById('price').value;
+
+                    if (product && quantity && price) {
+                        const total = (parseFloat(quantity) * parseFloat(price)).toFixed(2);
+                        const today = new Date().toLocaleDateString();
+
+                        const venta = {
+                            fecha: today,
+                            producto: product,
+                            cantidad: quantity,
+                            precio: parseFloat(price).toFixed(2),
+                            total: total,
+                        };
+
+                        ventas.push(venta);
+                        localStorage.setItem('ventas', JSON.stringify(ventas));
+
+                        renderMonthlySales();
+
+                        document.getElementById('product').value = '';
+                        document.getElementById('quantity').value = '';
+                        document.getElementById('price').value = '';
+                    } else {
+                        alert('Por favor completa todos los campos');
+                    }
+                });
+
+
+                document.getElementById('add-debtor').addEventListener('click', function () {
+                    const debtorName = document.getElementById('new-debtor').value.trim();
+
+                    if (debtorName) {
+                        const deudor = { nombre: debtorName, deudas: [] };
+                        deudores.push(deudor);
+                        localStorage.setItem('deudores', JSON.stringify(deudores));
+
+                        crearCarpetaDeudor(deudor);
+
+                        document.getElementById('new-debtor').value = '';
+                    } else {
+                        alert('Por favor ingresa el nombre del deudor');
+                    }
+                });
+
+                function crearCarpetaDeudor(deudor) {
+                    const folder = document.createElement('div');
+                    folder.className = 'debtor-folder';
+                    folder.innerHTML = `
+            <div class="folder-header">
+                <h3>${deudor.nombre}</h3>
+                <div>
+                    <button class="add-debt">Agregar Deuda</button>
+                    <button class="delete-debtor" style="background-color: #e74c3c; margin-left: 10px;">Eliminar Carpeta</button>
+                </div>
+            </div>
+            <div class="form-group" style="display: none;">
+                <label>Descripción:</label>
+                <input type="text" class="debt-desc" placeholder="¿Qué debe?">
+            </div>
+            <div class="form-group" style="display: none;">
+                <label>Monto:</label>
+                <input type="number" class="debt-amount" placeholder="Cantidad">
+            </div>
+            <div class="form-group" style="display: none;">
+                <label>Fecha:</label>
+                <input type="date" class="debt-date">
+            </div>
+            <button class="save-debt" style="display: none;">Guardar Deuda</button>
+            <table style="margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th>Descripción</th>
+                        <th>Monto</th>
+                        <th>Fecha</th>
+                        <th>Pagado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        `;
+
+                    debtorsList.insertBefore(folder, debtorsList.firstChild);
+
+                    const tbody = folder.querySelector('tbody');
+                    deudor.deudas.forEach(deuda => {
+                        agregarFilaDeuda(tbody, deuda, deudor);
+                    });
+
+                    setupDebtorFolder(folder, deudor);
+
+                    const deleteDebtorBtn = folder.querySelector('.delete-debtor');
+                    deleteDebtorBtn.addEventListener('click', function () {
+                        if (confirm(`¿Estás seguro de eliminar la carpeta de "${deudor.nombre}"? Esta acción no se puede deshacer.`)) {
+                            debtorsList.removeChild(folder);
+                            deudores = deudores.filter(d => d !== deudor);
+                            localStorage.setItem('deudores', JSON.stringify(deudores));
+                            alert(`"${deudor.nombre}" fue eliminado correctamente.`);
+                        }
+                    });
+
+                }
+
+                // Botón para eliminar el historial de ventas
+                document.getElementById('clear-sales').addEventListener('click', function () {
+                    if (confirm('¿Estás seguro de eliminar todo el historial de ventas? Esta acción no se puede deshacer.')) {
+                        ventas = [];
+                        localStorage.removeItem('ventas');
+                        // Limpiar las tabla visualmente
+                        monthlySalesContainer.innerHTML = '';
+                        alert('Historial de ventas eliminado.');
+                    }
+                });
+
+                function renderMonthlySales() {
+                    // Limpiar todo
+                    monthlySalesContainer.innerHTML = '';
+
+                    // Agrupar por mes
+                    const salesByMonth = {};
+
+                    ventas.forEach(v => {
+                        const [day, month, year] = v.fecha.split('/');
+                        const key = `${month}/${year}`;
+                        if (!salesByMonth[key]) {
+                            salesByMonth[key] = [];
+                        }
+                        salesByMonth[key].push(v);
+                    });
+
+                    // Crear bloques por mes
+                    for (const monthKey in salesByMonth) {
+                        const sales = salesByMonth[monthKey];
+                        const totalMes = sales.reduce((sum, s) => sum + parseFloat(s.total), 0);
+
+                        const monthDiv = document.createElement('div');
+                        monthDiv.style.marginBottom = '30px';
+
+                        monthDiv.innerHTML = `
+            <h4 style="margin-bottom:5px;">Mes: ${monthKey}</h4>
+            <p style="margin:5px 0;"><strong>Total del mes:</strong> $${totalMes.toFixed(2)}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sales.map(s => `
+                        <tr>
+                            <td>${s.fecha}</td>
+                            <td>${s.producto}</td>
+                            <td>${s.cantidad}</td>
+                            <td>$${s.precio}</td>
+                            <td>$${s.total}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+                        monthlySalesContainer.appendChild(monthDiv);
+                    }
+                }
+
+
+                function setupDebtorFolder(folder, deudor) {
+                    const addDebtBtn = folder.querySelector('.add-debt');
+                    const saveDebtBtn = folder.querySelector('.save-debt');
+                    const formGroups = folder.querySelectorAll('.form-group');
+                    const tbody = folder.querySelector('tbody');
+
+                    addDebtBtn.addEventListener('click', function () {
+                        formGroups.forEach(group => {
+                            group.style.display = group.style.display === 'none' ? 'block' : 'none';
+                        });
+                        saveDebtBtn.style.display = saveDebtBtn.style.display === 'none' ? 'block' : 'none';
+                        addDebtBtn.textContent = addDebtBtn.textContent === 'Agregar Deuda' ? 'Cancelar' : 'Agregar Deuda';
+                    });
+
+                    saveDebtBtn.addEventListener('click', function () {
+                        const desc = folder.querySelector('.debt-desc').value;
+                        const amount = folder.querySelector('.debt-amount').value;
+                        const date = folder.querySelector('.debt-date').value;
+
+                        if (desc && amount && date) {
+                            const formattedDate = new Date(date).toLocaleDateString();
+                            const deuda = {
+                                descripcion: desc,
+                                monto: parseFloat(amount).toFixed(2),
+                                fecha: formattedDate,
+                                pagado: false
+                            };
+
+                            deudor.deudas.push(deuda);
+                            localStorage.setItem('deudores', JSON.stringify(deudores));
+
+                            agregarFilaDeuda(tbody, deuda, deudor);
+
+                            folder.querySelector('.debt-desc').value = '';
+                            folder.querySelector('.debt-amount').value = '';
+                            folder.querySelector('.debt-date').value = '';
+                            formGroups.forEach(group => group.style.display = 'none');
+                            saveDebtBtn.style.display = 'none';
+                            addDebtBtn.textContent = 'Agregar Deuda';
+                        } else {
+                            alert('Por favor completa todos los campos');
+                        }
+                    });
+                }
+
+                function agregarFilaDeuda(tbody, deuda, deudor) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+            <td>${deuda.descripcion}</td>
+            <td>$${deuda.monto}</td>
+            <td>${deuda.fecha}</td>
+            <td><input type="checkbox" ${deuda.pagado ? 'checked' : ''}></td>
+            <td>
+                <button style="padding: 5px 8px;">Editar</button>
+                <button style="padding: 5px 8px; background-color: #e74c3c;">Eliminar</button>
+            </td>
+        `;
+
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    const deleteBtn = row.querySelector('button:last-child');
+
+                    checkbox.addEventListener('change', function () {
+                        deuda.pagado = this.checked;
+                        localStorage.setItem('deudores', JSON.stringify(deudores));
+                    });
+
+                    deleteBtn.addEventListener('click', function () {
+                        if (confirm('¿Estás seguro de eliminar esta deuda?')) {
+                            tbody.removeChild(row);
+                            deudor.deudas = deudor.deudas.filter(d => d !== deuda);
+                            localStorage.setItem('deudores', JSON.stringify(deudores));
+                        }
+                    });
+
+                    tbody.appendChild(row);
+                }
+            });
+        </script>
+
+    </body>
+
+    </html>
